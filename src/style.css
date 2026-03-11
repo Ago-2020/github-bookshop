@@ -1,0 +1,180 @@
+:root {
+  color-scheme: dark;
+  --bg: #120d0b;
+  --panel: rgba(27, 18, 14, 0.82);
+  --panel-border: rgba(255, 218, 175, 0.15);
+  --text: #f6ead9;
+  --muted: #c3aa8a;
+  --accent: #ffb86c;
+  --shadow: rgba(0, 0, 0, 0.28);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  font-family: "IBM Plex Sans", sans-serif;
+  background:
+    radial-gradient(circle at top, rgba(255, 186, 108, 0.12), transparent 28%),
+    linear-gradient(180deg, #1d1410 0%, #120d0b 100%);
+  color: var(--text);
+  overflow: hidden;
+}
+
+#scene {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+.panel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: min(26rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 20px 60px var(--shadow);
+  border-radius: 1.5rem;
+}
+
+.panel__inner {
+  padding: 1.2rem 1.2rem 1.4rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+}
+
+h1,
+h2 {
+  font-family: "Cormorant Garamond", serif;
+  line-height: 0.95;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+}
+
+.lede {
+  margin: 0.9rem 0 1rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.status {
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border-radius: 999px;
+  background: rgba(255, 184, 108, 0.08);
+  color: #ffd8aa;
+  font-size: 0.92rem;
+}
+
+.repo-card {
+  min-height: 14rem;
+  padding: 1rem;
+  border-radius: 1.1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.repo-card__empty {
+  margin: 0;
+  color: var(--muted);
+}
+
+.repo-card__header {
+  display: flex;
+  gap: 0.9rem;
+  align-items: center;
+}
+
+.repo-card__avatar {
+  width: 3.25rem;
+  height: 3.25rem;
+  border-radius: 999px;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.repo-card__owner {
+  margin: 0 0 0.2rem;
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.repo-card h2 {
+  margin: 0;
+  font-size: 2rem;
+}
+
+.repo-card__description {
+  margin: 1rem 0;
+  line-height: 1.6;
+  color: #f1dfca;
+}
+
+.repo-card__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-bottom: 0.8rem;
+}
+
+.repo-card__stats span {
+  padding: 0.5rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffe0b8;
+  font-size: 0.9rem;
+}
+
+.repo-card__meta {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.repo-card__link {
+  color: var(--bg);
+  background: linear-gradient(135deg, #ffd7a3, #ffb86c);
+  display: inline-block;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+@media (max-width: 900px) {
+  .panel {
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    bottom: 1rem;
+    width: auto;
+    max-height: 48vh;
+  }
+
+  h1 {
+    font-size: 2.4rem;
+  }
+}

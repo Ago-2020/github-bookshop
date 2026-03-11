@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GitHub Bookshop</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="scene"></canvas>
+      <aside class="panel">
+        <div class="panel__inner">
+          <p class="eyebrow">GitHub Bookshop</p>
+          <h1>Browse repositories like books.</h1>
+          <p class="lede">
+            Click a book to inspect a repository. Reload to restock the
+            shelves with another pseudo-random selection.
+          </p>
+
+          <div class="status" id="status">Loading repositories...</div>
+
+          <section class="repo-card" id="repo-card">
+            <p class="repo-card__empty">Select a book on the shelf.</p>
+          </section>
+        </div>
+      </aside>
+    </div>
+  </body>
+</html>
