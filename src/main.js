@@ -11,6 +11,8 @@ const toggleFiltersPanelButton = document.querySelector("#toggle-filters-panel")
 const refreshButton = document.querySelector("#refresh-button");
 const languageFiltersEl = document.querySelector("#language-filters");
 const starFiltersEl = document.querySelector("#star-filters");
+const bookCountInputEl = document.querySelector("#book-count");
+const bookCountValueEl = document.querySelector("#book-count-value");
 
 const languageOptions = [
   { value: "any", label: "Any" },
@@ -31,13 +33,14 @@ const starOptions = [
 const state = {
   language: "any",
   minStars: 25,
+  bookCount: Number(bookCountInputEl.value),
   filtersOpen: true,
   loadToken: 0,
 };
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#120d0b");
-scene.fog = new THREE.Fog("#120d0b", 15, 40);
+scene.fog = new THREE.Fog("#120d0b", 15, 42);
 
 const camera = new THREE.PerspectiveCamera(
   55,
@@ -45,7 +48,7 @@ const camera = new THREE.PerspectiveCamera(
   0.1,
   100,
 );
-camera.position.set(0, 4.8, 11);
+camera.position.set(0, 5.2, 12.5);
 
 const renderer = new THREE.WebGLRenderer({
   canvas,
@@ -58,15 +61,17 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.target.set(0, 3, 0);
+controls.target.set(0, 2.8, 0.5);
 controls.minDistance = 6;
 controls.maxDistance = 18;
-controls.maxPolarAngle = Math.PI / 2.05;
+controls.maxPolarAngle = Math.PI / 2.08;
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2(2, 2);
 const clickableBooks = [];
+const shelfSlots = [];
+
 let hoveredBook = null;
 let selectedBook = null;
 
@@ -74,8 +79,9 @@ setupLights();
 createRoom();
 createShelves();
 renderFilterControls();
+syncBookCountDisplay();
 syncFilterPanel();
-loadRepos();
+void loadRepos();
 animate();
 
 window.addEventListener("resize", onResize);
@@ -85,6 +91,8 @@ toggleFiltersPanelButton.addEventListener("click", toggleFilters);
 refreshButton.addEventListener("click", () => {
   void loadRepos();
 });
+bookCountInputEl.addEventListener("input", onBookCountInput);
+bookCountInputEl.addEventListener("change", onBookCountChange);
 
 function setupLights() {
   const ambient = new THREE.AmbientLight("#f4d7b8", 1.5);
@@ -100,18 +108,18 @@ function setupLights() {
   key.shadow.camera.bottom = -15;
   scene.add(key);
 
-  const fill = new THREE.PointLight("#d88f52", 15, 30, 2);
-  fill.position.set(0, 4, 0);
+  const fill = new THREE.PointLight("#d88f52", 18, 32, 2);
+  fill.position.set(0, 4.5, 0);
   scene.add(fill);
 }
 
 function createRoom() {
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 30),
+    new THREE.PlaneGeometry(42, 32),
     new THREE.MeshStandardMaterial({
       color: "#50301d",
-      roughness: 0.9,
-      metalness: 0.05,
+      roughness: 0.92,
+      metalness: 0.04,
     }),
   );
   floor.rotation.x = -Math.PI / 2;
@@ -119,80 +127,114 @@ function createRoom() {
   scene.add(floor);
 
   const backWall = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 18),
+    new THREE.PlaneGeometry(42, 18),
     new THREE.MeshStandardMaterial({
       color: "#2a1e1a",
       roughness: 1,
     }),
   );
-  backWall.position.set(0, 9, -8);
+  backWall.position.set(0, 9, -9);
   scene.add(backWall);
 
   const ceilingGlow = new THREE.Mesh(
-    new THREE.CircleGeometry(2.5, 48),
+    new THREE.CircleGeometry(2.7, 48),
     new THREE.MeshBasicMaterial({
       color: "#ffb76a",
       transparent: true,
       opacity: 0.18,
     }),
   );
-  ceilingGlow.position.set(0, 8.8, 1);
+  ceilingGlow.position.set(0, 8.9, 1);
   ceilingGlow.rotation.x = Math.PI / 2;
   scene.add(ceilingGlow);
 }
 
 function createShelves() {
+  const shelfDefinitions = [
+    { position: new THREE.Vector3(-8.4, 0, 2.8), rotationY: 0.72 },
+    { position: new THREE.Vector3(0, 0, -4.1), rotationY: 0 },
+    { position: new THREE.Vector3(8.4, 0, 2.8), rotationY: -0.72 },
+  ];
+
+  for (const definition of shelfDefinitions) {
+    createShelfUnit(definition);
+  }
+}
+
+function createShelfUnit({ position, rotationY }) {
+  const boardDepth = 1.08;
+  const boardThickness = 0.18;
   const shelfMaterial = new THREE.MeshStandardMaterial({
     color: "#6d472a",
     roughness: 0.85,
     metalness: 0.05,
   });
 
-  for (const z of [-3.5, 0, 3.5]) {
-    const backPanel = new THREE.Mesh(
-      new THREE.BoxGeometry(15, 6.8, 0.12),
+  const group = new THREE.Group();
+  group.position.copy(position);
+  group.rotation.y = rotationY;
+  scene.add(group);
+
+  const backPanel = new THREE.Mesh(
+    new THREE.BoxGeometry(9.6, 6.8, 0.12),
+    shelfMaterial,
+  );
+  backPanel.position.set(0, 3.5, -0.48);
+  backPanel.receiveShadow = true;
+  backPanel.castShadow = true;
+  group.add(backPanel);
+
+  for (const x of [-4.7, 4.7]) {
+    const post = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 6.8, 1.08),
       shelfMaterial,
     );
-    backPanel.position.set(0, 3.5, z - 0.48);
-    backPanel.receiveShadow = true;
-    backPanel.castShadow = true;
-    scene.add(backPanel);
+    post.position.set(x, 3.5, 0);
+    post.receiveShadow = true;
+    post.castShadow = true;
+    group.add(post);
+  }
 
-    for (const x of [-7.2, 7.2]) {
-      const post = new THREE.Mesh(
-        new THREE.BoxGeometry(0.22, 6.8, 1.1),
-        shelfMaterial,
-      );
-      post.position.set(x, 3.5, z);
-      post.receiveShadow = true;
-      post.castShadow = true;
-      scene.add(post);
-    }
+  for (const y of [1.2, 3.2, 5.2]) {
+    const board = new THREE.Mesh(
+      new THREE.BoxGeometry(9.2, boardThickness, boardDepth),
+      shelfMaterial,
+    );
+    board.position.set(0, y, 0);
+    board.receiveShadow = true;
+    board.castShadow = true;
+    group.add(board);
+  }
 
-    for (const y of [1.2, 3.2, 5.2]) {
-      const board = new THREE.Mesh(
-        new THREE.BoxGeometry(14.6, 0.18, 1.1),
-        shelfMaterial,
-      );
-      board.position.set(0, y, z);
-      board.receiveShadow = true;
-      board.castShadow = true;
-      scene.add(board);
-    }
+  group.updateMatrixWorld(true);
+
+  for (const y of [1.35, 3.35, 5.35]) {
+    const start = group.localToWorld(new THREE.Vector3(-4.25, y, 0));
+    const end = group.localToWorld(new THREE.Vector3(4.25, y, 0));
+    const direction = end.clone().sub(start).normalize();
+    const shelfCenter = group.localToWorld(new THREE.Vector3(0, y, 0));
+    const shelfFront = group.localToWorld(new THREE.Vector3(0, y, 1));
+    const forward = shelfFront.sub(shelfCenter).setY(0).normalize();
+
+    shelfSlots.push({
+      start,
+      direction,
+      forward,
+      length: 8.5,
+      rotationY,
+      shelfY: y,
+      boardTop: y + boardThickness / 2,
+      boardFront: boardDepth / 2,
+    });
   }
 }
 
 function renderFilterControls() {
-  renderChipGroup(
-    languageFiltersEl,
-    languageOptions,
-    state.language,
-    (value) => {
-      state.language = value;
-      renderFilterControls();
-      void loadRepos();
-    },
-  );
+  renderChipGroup(languageFiltersEl, languageOptions, state.language, (value) => {
+    state.language = value;
+    renderFilterControls();
+    void loadRepos();
+  });
 
   renderChipGroup(starFiltersEl, starOptions, state.minStars, (value) => {
     state.minStars = value;
@@ -236,6 +278,21 @@ function syncFilterPanel() {
   toggleFiltersPanelButton.innerHTML = state.filtersOpen ? "&#10094;" : "&#10095;";
 }
 
+function syncBookCountDisplay() {
+  bookCountValueEl.textContent = String(state.bookCount);
+}
+
+function onBookCountInput(event) {
+  state.bookCount = Number(event.target.value);
+  syncBookCountDisplay();
+}
+
+function onBookCountChange(event) {
+  state.bookCount = Number(event.target.value);
+  syncBookCountDisplay();
+  void loadRepos();
+}
+
 async function loadRepos() {
   const loadToken = ++state.loadToken;
   setLoadingState(true);
@@ -243,17 +300,17 @@ async function loadRepos() {
   statusEl.textContent = "Loading repositories...";
 
   try {
-    const repos = await fetchRandomRepos(120);
+    const repos = await fetchRandomRepos(state.bookCount + 24);
 
     if (loadToken !== state.loadToken) {
       return;
     }
 
-    placeBooks(repos);
+    placeBooks(repos.slice(0, state.bookCount));
     selectedBook = null;
     repoCardEl.innerHTML =
       '<p class="repo-card__empty">Select a book on the shelf.</p>';
-    statusEl.textContent = `Loaded ${repos.length} repositories.`;
+    statusEl.textContent = `Loaded ${Math.min(state.bookCount, repos.length)} repositories.`;
   } catch (error) {
     console.error(error);
     if (loadToken !== state.loadToken) {
@@ -272,11 +329,12 @@ async function fetchRandomRepos(targetCount) {
   const languageClause =
     state.language === "any" ? "" : `+language:${state.language}`;
   const repoMap = new Map();
+  const requestCount = Math.max(2, Math.ceil(targetCount / 60));
   const requests = [];
 
-  for (let index = 0; index < 2; index += 1) {
+  for (let index = 0; index < requestCount; index += 1) {
     const page = Math.floor(Math.random() * 10) + 1;
-    const salt = Math.floor(Math.random() * 300);
+    const salt = Math.floor(Math.random() * 280);
     const url =
       "https://api.github.com/search/repositories" +
       `?q=stars:>${state.minStars + salt}${languageClause}+archived:false` +
@@ -324,47 +382,43 @@ function clearBooks() {
 }
 
 function placeBooks(repos) {
-  const shelfRows = [
-    { y: 1.35, z: 3.5 },
-    { y: 3.35, z: 3.5 },
-    { y: 5.35, z: 3.5 },
-    { y: 1.35, z: 0 },
-    { y: 3.35, z: 0 },
-    { y: 5.35, z: 0 },
-    { y: 1.35, z: -3.5 },
-    { y: 3.35, z: -3.5 },
-    { y: 5.35, z: -3.5 },
-  ];
-
   let repoIndex = 0;
 
-  for (const row of shelfRows) {
-    let x = -6.95;
+  for (const slot of shelfSlots) {
+    let distance = 0;
 
-    while (x < 6.6 && repoIndex < repos.length) {
+    while (distance < slot.length - 0.25 && repoIndex < repos.length) {
       const repo = repos[repoIndex];
-      const book = createBook(repo);
+      const book = createBook(repo, slot.rotationY);
       const width = book.userData.width;
+      const height = book.userData.height;
 
-      book.position.set(
-        x + width / 2,
-        row.y + book.userData.height / 2,
-        row.z,
-      );
-      book.userData.baseY = book.position.y;
-      book.userData.baseZ = book.position.z;
+      if (distance + width > slot.length) {
+        break;
+      }
+
+      const forwardOffset = Math.max(0.02, slot.boardFront - book.userData.depth / 2 - 0.04);
+      const position = slot.start
+        .clone()
+        .addScaledVector(slot.direction, distance + width / 2)
+        .addScaledVector(slot.forward, forwardOffset);
+      position.y = slot.boardTop + height / 2 - 0.15;
+
+      book.position.copy(position);
+      book.userData.basePosition = position.clone();
+      book.userData.wobbleVector = slot.forward.clone();
 
       scene.add(book);
       clickableBooks.push(book);
 
-      x += width + 0.07 + Math.random() * 0.05;
+      distance += width + 0.08 + Math.random() * 0.06;
       repoIndex += 1;
     }
   }
 }
 
-function createBook(repo) {
-  const width = THREE.MathUtils.randFloat(0.28, 0.62);
+function createBook(repo, shelfRotationY) {
+  const width = THREE.MathUtils.randFloat(0.34, 0.68);
   const height = THREE.MathUtils.randFloat(0.95, 1.55);
   const depth = THREE.MathUtils.randFloat(0.65, 0.9);
 
@@ -383,12 +437,13 @@ function createBook(repo) {
   book.receiveShadow = true;
 
   const tilt = THREE.MathUtils.randFloatSpread(0.05);
-  book.rotation.y = tilt;
+  book.rotation.y = shelfRotationY + tilt;
 
   book.userData = {
     repo,
     width,
     height,
+    depth,
     baseColor: color.clone(),
     wobbleOffset: Math.random() * Math.PI * 2,
   };
@@ -484,6 +539,7 @@ function renderRepoCard(repo) {
 function setLoadingState(isLoading) {
   refreshButton.disabled = isLoading;
   toggleFiltersPanelButton.disabled = isLoading;
+  bookCountInputEl.disabled = isLoading;
 }
 
 function animate() {
@@ -495,12 +551,12 @@ function animate() {
 
   for (const book of clickableBooks) {
     const isActive = hoveredBook === book || selectedBook === book;
-    const targetY = isActive ? 0.06 : 0;
+    const lift = isActive ? 0.06 : 0;
+    const wobble = Math.sin(elapsed + book.userData.wobbleOffset) * 0.02;
 
-    book.position.z =
-      book.userData.baseZ +
-      Math.sin(elapsed + book.userData.wobbleOffset) * 0.02;
-    book.position.y += (book.userData.baseY + targetY - book.position.y) * 0.12;
+    book.position.copy(book.userData.basePosition);
+    book.position.addScaledVector(book.userData.wobbleVector, wobble);
+    book.position.y += lift;
   }
 
   controls.update();

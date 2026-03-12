@@ -1,4 +1,4 @@
-wa<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -43,6 +43,22 @@ wa<!doctype html>
 
           <section class="filters" id="filters">
             <div class="filters__inner">
+              <div class="filter-group">
+                <div class="filter-group__split">
+                  <p class="filter-group__label">Books</p>
+                  <span class="filter-group__value" id="book-count-value">72</span>
+                </div>
+                <input
+                  class="slider"
+                  id="book-count"
+                  type="range"
+                  min="24"
+                  max="120"
+                  step="6"
+                  value="72"
+                />
+              </div>
+
               <div class="filter-group">
                 <p class="filter-group__label">Language</p>
                 <div class="chip-row" id="language-filters"></div>

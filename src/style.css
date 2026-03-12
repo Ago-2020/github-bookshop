@@ -196,12 +196,31 @@ h2 {
   margin-top: 0.9rem;
 }
 
+.filter-group__split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
 .filter-group__label {
   margin: 0 0 0.55rem;
   color: var(--muted);
   font-size: 0.88rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+
+.filter-group__value {
+  color: #ffe0b8;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.slider {
+  width: 100%;
+  margin: 0.35rem 0 0;
+  accent-color: #ffb86c;
 }
 
 .chip-row {
