@@ -5,6 +5,35 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 const canvas = document.querySelector("#scene");
 const statusEl = document.querySelector("#status");
 const repoCardEl = document.querySelector("#repo-card");
+const filtersPanelEl = document.querySelector("#filters-panel");
+const filtersEl = document.querySelector("#filters");
+const toggleFiltersPanelButton = document.querySelector("#toggle-filters-panel");
+const refreshButton = document.querySelector("#refresh-button");
+const languageFiltersEl = document.querySelector("#language-filters");
+const starFiltersEl = document.querySelector("#star-filters");
+
+const languageOptions = [
+  { value: "any", label: "Any" },
+  { value: "javascript", label: "JavaScript" },
+  { value: "typescript", label: "TypeScript" },
+  { value: "python", label: "Python" },
+  { value: "go", label: "Go" },
+  { value: "rust", label: "Rust" },
+];
+
+const starOptions = [
+  { value: 25, label: "25+" },
+  { value: 100, label: "100+" },
+  { value: 500, label: "500+" },
+  { value: 2000, label: "2k+" },
+];
+
+const state = {
+  language: "any",
+  minStars: 25,
+  filtersOpen: true,
+  loadToken: 0,
+};
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color("#120d0b");
@@ -36,7 +65,7 @@ controls.maxPolarAngle = Math.PI / 2.05;
 
 const clock = new THREE.Clock();
 const raycaster = new THREE.Raycaster();
-const pointer = new THREE.Vector2();
+const pointer = new THREE.Vector2(2, 2);
 const clickableBooks = [];
 let hoveredBook = null;
 let selectedBook = null;
@@ -44,12 +73,18 @@ let selectedBook = null;
 setupLights();
 createRoom();
 createShelves();
+renderFilterControls();
+syncFilterPanel();
 loadRepos();
 animate();
 
 window.addEventListener("resize", onResize);
 window.addEventListener("pointermove", onPointerMove);
 window.addEventListener("click", onClick);
+toggleFiltersPanelButton.addEventListener("click", toggleFilters);
+refreshButton.addEventListener("click", () => {
+  void loadRepos();
+});
 
 function setupLights() {
   const ambient = new THREE.AmbientLight("#f4d7b8", 1.5);
@@ -147,66 +182,166 @@ function createShelves() {
   }
 }
 
-async function loadRepos() {
-  statusEl.textContent = "Loading repositories...";
+function renderFilterControls() {
+  renderChipGroup(
+    languageFiltersEl,
+    languageOptions,
+    state.language,
+    (value) => {
+      state.language = value;
+      renderFilterControls();
+      void loadRepos();
+    },
+  );
 
-  try {
-    const repos = await fetchRandomRepos(72);
-    placeBooks(repos);
-    statusEl.textContent = `Loaded ${repos.length} repositories.`;
-  } catch (error) {
-    console.error(error);
-    statusEl.textContent =
-      "GitHub request failed. Check rate limits or try reloading.";
+  renderChipGroup(starFiltersEl, starOptions, state.minStars, (value) => {
+    state.minStars = value;
+    renderFilterControls();
+    void loadRepos();
+  });
+}
+
+function renderChipGroup(container, options, activeValue, onSelect) {
+  container.innerHTML = "";
+
+  for (const option of options) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chip";
+    if (option.value === activeValue) {
+      button.classList.add("chip--active");
+    }
+    button.textContent = option.label;
+    button.addEventListener("click", () => onSelect(option.value));
+    container.append(button);
   }
 }
 
-async function fetchRandomRepos(count) {
-  const minStars = Math.floor(Math.random() * 800);
-  const page = Math.floor(Math.random() * 8) + 1;
-  const languageFilters = ["javascript", "typescript", "python", "go", "rust"];
-  const language =
-    languageFilters[Math.floor(Math.random() * languageFilters.length)];
+function toggleFilters() {
+  state.filtersOpen = !state.filtersOpen;
+  syncFilterPanel();
+}
 
-  const url =
-    "https://api.github.com/search/repositories" +
-    `?q=stars:>${minStars}+language:${language}+archived:false` +
-    `&sort=updated&order=desc&per_page=${count}&page=${page}`;
+function syncFilterPanel() {
+  filtersPanelEl.classList.toggle("panel--collapsed", !state.filtersOpen);
+  filtersEl.classList.toggle("filters--open", state.filtersOpen);
+  toggleFiltersPanelButton.setAttribute(
+    "aria-expanded",
+    String(state.filtersOpen),
+  );
+  toggleFiltersPanelButton.setAttribute(
+    "aria-label",
+    state.filtersOpen ? "Hide filters panel" : "Show filters panel",
+  );
+  toggleFiltersPanelButton.innerHTML = state.filtersOpen ? "&#10094;" : "&#10095;";
+}
 
-  const response = await fetch(url, {
-    headers: {
-      Accept: "application/vnd.github+json",
-      "X-GitHub-Api-Version": "2022-11-28",
-    },
-  });
+async function loadRepos() {
+  const loadToken = ++state.loadToken;
+  setLoadingState(true);
+  clearBooks();
+  statusEl.textContent = "Loading repositories...";
 
-  if (!response.ok) {
-    throw new Error(`GitHub API error: ${response.status}`);
+  try {
+    const repos = await fetchRandomRepos(120);
+
+    if (loadToken !== state.loadToken) {
+      return;
+    }
+
+    placeBooks(repos);
+    selectedBook = null;
+    repoCardEl.innerHTML =
+      '<p class="repo-card__empty">Select a book on the shelf.</p>';
+    statusEl.textContent = `Loaded ${repos.length} repositories.`;
+  } catch (error) {
+    console.error(error);
+    if (loadToken !== state.loadToken) {
+      return;
+    }
+    statusEl.textContent =
+      "GitHub request failed. Check rate limits or try another filter.";
+  } finally {
+    if (loadToken === state.loadToken) {
+      setLoadingState(false);
+    }
+  }
+}
+
+async function fetchRandomRepos(targetCount) {
+  const languageClause =
+    state.language === "any" ? "" : `+language:${state.language}`;
+  const repoMap = new Map();
+  const requests = [];
+
+  for (let index = 0; index < 2; index += 1) {
+    const page = Math.floor(Math.random() * 10) + 1;
+    const salt = Math.floor(Math.random() * 300);
+    const url =
+      "https://api.github.com/search/repositories" +
+      `?q=stars:>${state.minStars + salt}${languageClause}+archived:false` +
+      "&sort=updated&order=desc&per_page=60" +
+      `&page=${page}`;
+
+    requests.push(
+      fetch(url, {
+        headers: {
+          Accept: "application/vnd.github+json",
+          "X-GitHub-Api-Version": "2022-11-28",
+        },
+      }),
+    );
   }
 
-  const data = await response.json();
-  return data.items ?? [];
+  const responses = await Promise.all(requests);
+
+  for (const response of responses) {
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    for (const repo of data.items ?? []) {
+      repoMap.set(repo.id, repo);
+    }
+  }
+
+  return Array.from(repoMap.values()).slice(0, targetCount);
+}
+
+function clearBooks() {
+  hoveredBook = null;
+  selectedBook = null;
+
+  while (clickableBooks.length > 0) {
+    const book = clickableBooks.pop();
+    scene.remove(book);
+    book.geometry.dispose();
+    book.material.dispose();
+  }
+
+  updateBookStates();
 }
 
 function placeBooks(repos) {
   const shelfRows = [
-    { y: 1.35, z: -3.5 },
-    { y: 3.35, z: -3.5 },
-    { y: 5.35, z: -3.5 },
-    { y: 1.35, z: 0 },
-    { y: 3.35, z: 0 },
-    { y: 5.35, z: 0 },
     { y: 1.35, z: 3.5 },
     { y: 3.35, z: 3.5 },
     { y: 5.35, z: 3.5 },
+    { y: 1.35, z: 0 },
+    { y: 3.35, z: 0 },
+    { y: 5.35, z: 0 },
+    { y: 1.35, z: -3.5 },
+    { y: 3.35, z: -3.5 },
+    { y: 5.35, z: -3.5 },
   ];
 
   let repoIndex = 0;
 
   for (const row of shelfRows) {
-    let x = -7;
+    let x = -6.95;
 
-    while (x < 6.8 && repoIndex < repos.length) {
+    while (x < 6.6 && repoIndex < repos.length) {
       const repo = repos[repoIndex];
       const book = createBook(repo);
       const width = book.userData.width;
@@ -222,16 +357,16 @@ function placeBooks(repos) {
       scene.add(book);
       clickableBooks.push(book);
 
-      x += width + 0.05 + Math.random() * 0.04;
+      x += width + 0.07 + Math.random() * 0.05;
       repoIndex += 1;
     }
   }
 }
 
 function createBook(repo) {
-  const width = THREE.MathUtils.randFloat(0.18, 0.38);
-  const height = THREE.MathUtils.randFloat(0.9, 1.45);
-  const depth = THREE.MathUtils.randFloat(0.62, 0.82);
+  const width = THREE.MathUtils.randFloat(0.28, 0.62);
+  const height = THREE.MathUtils.randFloat(0.95, 1.55);
+  const depth = THREE.MathUtils.randFloat(0.65, 0.9);
 
   const hue = getLanguageHue(repo.language);
   const color = new THREE.Color().setHSL(hue, 0.45, 0.42);
@@ -247,7 +382,7 @@ function createBook(repo) {
   book.castShadow = true;
   book.receiveShadow = true;
 
-  const tilt = THREE.MathUtils.randFloatSpread(0.06);
+  const tilt = THREE.MathUtils.randFloatSpread(0.05);
   book.rotation.y = tilt;
 
   book.userData = {
@@ -270,7 +405,7 @@ function getLanguageHue(language) {
     Rust: 0.04,
   };
 
-  return map[language] ?? Math.random();
+  return map[language] ?? 0.08;
 }
 
 function onPointerMove(event) {
@@ -278,7 +413,11 @@ function onPointerMove(event) {
   pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
 }
 
-function onClick() {
+function onClick(event) {
+  if (event.target.closest(".panel")) {
+    return;
+  }
+
   if (!hoveredBook) {
     return;
   }
@@ -340,6 +479,11 @@ function renderRepoCard(repo) {
     <p class="repo-card__meta">Updated ${updated}</p>
     <a class="repo-card__link" href="${repo.html_url}" target="_blank" rel="noreferrer">Open repository</a>
   `;
+}
+
+function setLoadingState(isLoading) {
+  refreshButton.disabled = isLoading;
+  toggleFiltersPanelButton.disabled = isLoading;
 }
 
 function animate() {

@@ -1,4 +1,4 @@
-<!doctype html>
+wa<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -15,12 +15,59 @@
   <body>
     <div id="app">
       <canvas id="scene"></canvas>
-      <aside class="panel">
+      <aside class="panel panel--filters" id="filters-panel">
+        <button
+          class="panel-toggle"
+          id="toggle-filters-panel"
+          type="button"
+          aria-label="Hide filters panel"
+          aria-expanded="true"
+        >
+          &#10094;
+        </button>
         <div class="panel__inner">
-          <p class="eyebrow">GitHub Bookshop</p>
-          <h1>Browse repositories like books.</h1>
+          <div>
+            <p class="eyebrow">GitHub Bookshop</p>
+            <h2>Filters</h2>
+            <p class="lede">
+              Narrow the shelves by language or popularity, then restock with a
+              fresh random set.
+            </p>
+          </div>
+
+          <div class="panel__actions panel__actions--stack">
+            <button class="button" id="refresh-button" type="button">
+              Refresh
+            </button>
+          </div>
+
+          <section class="filters" id="filters">
+            <div class="filters__inner">
+              <div class="filter-group">
+                <p class="filter-group__label">Language</p>
+                <div class="chip-row" id="language-filters"></div>
+              </div>
+
+              <div class="filter-group">
+                <p class="filter-group__label">Popularity</p>
+                <div class="chip-row" id="star-filters"></div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <aside class="panel panel--details">
+        <div class="panel__inner">
+          <div class="panel__top">
+            <div>
+              <p class="eyebrow">GitHub Bookshop</p>
+              <h1>Browse repositories like books.</h1>
+            </div>
+          </div>
+
           <p class="lede">
-            Click a book to inspect a repository. Reload to restock the
+            Click a book to inspect a repository. Refresh to restock the
             shelves with another pseudo-random selection.
           </p>
 
